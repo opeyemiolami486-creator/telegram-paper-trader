@@ -73,7 +73,7 @@ class TelegramBot:
                 return
             self.pending_usernames[chat_id] = raw_text[:200]
             await self.send(chat_id, "Username saved in memory for this login attempt only. Opening the authorized site now; enter your password and OTP in the browser only.")
-            await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login, raw_text[:200]))
+            await self.send(chat_id, await self.login_message(raw_text[:200]))
             self.pending_usernames.pop(chat_id, None)
             return
         if text == "/start":
@@ -98,11 +98,11 @@ class TelegramBot:
             if _looks_like_secret(username):
                 await self.send(chat_id, "Login details rejected. Do not send passwords, OTPs, recovery codes, or API secrets to Telegram.")
             else:
-                await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login, username[:200]))
+                await self.send(chat_id, await self.login_message(username[:200]))
         elif text == "/cancel":
             self.awaiting_username.discard(chat_id)
             self.pending_usernames.pop(chat_id, None)
-            await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login))
+            await self.send(chat_id, await self.login_message())
         elif text == "/status":
             loss_limit = self.config.stop_loss_credits if self.config.stop_loss_credits is not None else "unlimited"
             await self.send(chat_id, f"mode={'PAPER' if self.config.paper_mode else 'BLOCKED'} site={self.config.target_url} paused={self.paused} browser_open={self.adapter.is_open()} spent_today={self.spent_today}/{self.config.daily_credit_limit} losses_today={self.losses_today}/{loss_limit}")
@@ -185,6 +185,13 @@ class TelegramBot:
                 await self.send(chat_id, f"{pair}: simulated settlement delay selected: {settlement_seconds}s")
                 await asyncio.sleep(settlement_seconds)
             await self.send(chat_id, f"Cycle settled. Credits used today: {self.spent_today}/{self.config.daily_credit_limit}")
+
+    async def login_message(self, username: str | None = None) -> str:
+        try:
+            return await asyncio.to_thread(self.adapter.open_for_manual_login, username)
+        except Exception as exc:
+            LOG.warning("Login handoff failed safely: %s", exc)
+            return "Login handoff failed safely. Check the hosted relay URL, shared secret, and target allowlist, then try /login again."
 
     async def run(self) -> None:
         if self.config.allowed_user_id is not None:

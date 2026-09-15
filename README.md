@@ -76,6 +76,8 @@ See `.env.example`. Never commit `.env` or secrets. Use a local machine or a pro
 
 Set `SETTLEMENT_MIN_SECONDS=0` and `SETTLEMENT_MAX_SECONDS=60` to randomize each paper settlement wait across the full requested range. Both endpoints are inclusive.
 
+For phone login, set `REMOTE_LOGIN_URL` to the HTTPS URL of the hosted secure login relay and set the same high-entropy `REMOTE_BOT_SECRET` in both services. The bot then sends judges a one-time `/remote/<token>` link. The hosted service keeps one Chromium session in memory for up to 15 minutes, relays the phone’s taps and text to that browser, and lets the bot inspect the same authenticated page. It does not write cookies or credentials to disk. The hosted service must run on persistent hosting; ordinary scale-to-zero hosting can discard the browser session.
+
 `STOP_LOSS_CREDITS` is the maximum number of recorded losses before the bot pauses. To disable that particular limit, set `STOP_LOSS_CREDITS=unlimited`. The daily credit limit remains active unless separately changed.
 
 ## Testing
@@ -94,7 +96,7 @@ The build was validated locally in a clean Python virtual environment: dependenc
 
 ## Judge testing
 
-Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. For interactive testing, run the bot on the tester’s machine with `BROWSER_HEADLESS=false`, send `/site`, then use `/login`. The bot asks for an optional username but never accepts passwords, OTPs, recovery codes, or API secrets in Telegram. If the bot process has no desktop (`DISPLAY`/`WAYLAND_DISPLAY`), it now says so instead of falsely claiming that a popup opened; open the exact allowlisted URL in the tester’s already-open browser or run the bot locally. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.
+Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. With the hosted relay configured, send `/site`, then `/login`; open the one-time link on the judge’s phone and complete login there. Passwords, OTPs, recovery codes, and API secrets never go through Telegram. Without the relay, the bot falls back to a local visible browser and explains when no desktop is available. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.
 
 ## License
 

@@ -22,6 +22,8 @@ class Config:
     settlement_min_seconds: int
     settlement_max_seconds: int
     browser_headless: bool
+    remote_login_url: str = ""
+    remote_bot_secret: str = ""
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -66,6 +68,8 @@ class Config:
             settlement_min_seconds=settlement_min,
             settlement_max_seconds=settlement_max,
             browser_headless=os.environ.get("BROWSER_HEADLESS", "false").lower() == "true",
+            remote_login_url=os.environ.get("REMOTE_LOGIN_URL", "").strip().rstrip("/"),
+            remote_bot_secret=os.environ.get("REMOTE_BOT_SECRET", "").strip(),
         )
 
     @property

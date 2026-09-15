@@ -2,6 +2,8 @@
 
 A safety-first Python prototype for a Telegram-controlled **paper-trading** workflow against a website you provide.
 
+Public repository: https://github.com/opeyemiolami486-creator/telegram-paper-trader
+
 > **Important:** This repository does not place live trades, allocate real credits, bypass authentication, or collect passwords/OTPs in Telegram. It opens the supplied website in a visible browser and asks the operator to type credentials and OTPs directly into that browser. The default execution mode is simulation only.
 
 ## What it does
@@ -71,6 +73,18 @@ See `.env.example`. Never commit `.env` or secrets. Use a local machine or a pro
 ```bash
 pytest -q
 ```
+
+## Judge demo
+
+Judges can run a deterministic local demonstration without Telegram credentials or a real website:
+
+```bash
+python demo.py
+```
+
+The demo creates eight local mock pairs, randomizes their order, selects the lower **supplied** probability, waits for simulated settlement, and prints an audit trail. It never opens a real browser and never allocates credits. This is the supported way to test the project when no authorized sandbox or documented API has been provided.
+
+Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. The generic adapter intentionally refuses to click live trade controls.
 
 ## License
 

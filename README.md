@@ -23,7 +23,7 @@ The reference interaction model is inspired by [Cade Market](https://cade.market
 ## What it intentionally does not do
 
 - No live credit allocation or live trading.
-- No Telegram collection or storage of passwords, OTPs, recovery codes, or API secrets.
+- No Telegram collection or storage of passwords, OTPs, recovery codes, or API secrets. This remains true in public judge mode.
 - No arbitrary backend/API access.
 - No automatic discovery of hidden endpoints or unrelated domains.
 - No CAPTCHA solving, anti-bot bypass, stealth mode, or hidden browser.
@@ -88,13 +88,13 @@ pytest -q
 
 The repository includes `railway.toml` and a `Procfile`. Railway will install Python dependencies, install the Chromium runtime required by Playwright, and start the worker with `python -m bot`.
 
-Set all variables from `.env.example` in Railway’s Variables panel. For a headless Railway worker, set `BROWSER_HEADLESS=true`. The Telegram polling loop can run on Railway, but Railway does not provide an interactive desktop, so manual username/password/OTP entry and visible-browser inspection must be performed on a local machine or an authorized remote desktop. Do not deploy credentials in source control.
+Set all variables from `.env.example` in Railway’s Variables panel. For a headless Railway worker, set `BROWSER_HEADLESS=true`. Railway does not provide an interactive desktop: `/login` can start a headless session, but it cannot display a browser to judges. Manual username/password/OTP entry and visible-browser inspection must be performed on a local machine or an authorized remote desktop. Do not put OTPs in Telegram or deploy credentials in source control.
 
 The build was validated locally in a clean Python virtual environment: dependencies installed, all tests passed, and all Python modules compiled successfully. A live Railway deployment cannot be verified from this session because no Railway project or authenticated Railway CLI is connected.
 
 ## Judge testing
 
-Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. A judge can send `/site`, provide the authorized test URL, then use `/login` and complete login/OTP directly in the visible browser. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.
+Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. For interactive testing, run the bot locally with `BROWSER_HEADLESS=false`, send `/site`, then use `/login` and complete login/OTP directly in the visible browser. Alternatively, ask the judges for a sandbox account that does not require OTP. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.
 
 ## License
 

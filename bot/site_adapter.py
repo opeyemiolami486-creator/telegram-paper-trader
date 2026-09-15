@@ -41,6 +41,13 @@ class SiteAdapter:
         page = browser.new_page()
         page.goto(self.config.target_url, wait_until="domcontentloaded")
         self.session = BrowserSession(pw, browser, page)
+        if self.config.browser_headless:
+            return (
+                "A headless browser session started, but it is not visible on Railway. "
+                "For manual username/password/OTP entry, run the bot locally with "
+                "BROWSER_HEADLESS=false or use an authorized judge test account without OTP. "
+                "Do not send credentials or OTPs to Telegram."
+            )
         return (
             "Browser opened. Enter username, password, and OTP directly in that browser window. "
             "Do not send credentials or OTPs to Telegram. When finished, use /status."

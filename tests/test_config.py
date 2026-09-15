@@ -27,6 +27,10 @@ def test_runtime_site_replaces_exact_allowlist():
     assert updated.allowed_hosts == frozenset({"judge.example"})
 
 
+def test_public_mode_does_not_require_user_ids():
+    assert config().public_access is False
+
+
 @pytest.mark.parametrize("url", ["javascript:alert(1)", "https://user:pass@example.com", "https://example.com/#secret"])
 def test_runtime_site_rejects_unsafe_url(url):
     with pytest.raises(ValueError):

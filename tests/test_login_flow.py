@@ -1,7 +1,5 @@
-import os
-
 from bot.__main__ import _looks_like_secret
-from bot.site_adapter import SiteAdapter
+from bot.site_adapter import BrowserSession, SiteAdapter
 from tests.test_config import config
 
 
@@ -20,3 +18,17 @@ def test_login_explains_when_no_visible_desktop(monkeypatch):
     assert "No visible desktop" in message
     assert "password" in message.lower()
     assert not adapter.is_open()
+
+
+def test_dead_browser_session_is_not_alive():
+    class DeadBrowser:
+        def is_connected(self):
+            return False
+
+    class Page:
+        def is_closed(self):
+            return False
+
+    adapter = SiteAdapter(config())
+    adapter.session = BrowserSession(object(), DeadBrowser(), Page())
+    assert not adapter._session_is_alive()

@@ -34,9 +34,13 @@ class SiteAdapter:
 
     def open_for_manual_login(self, username: str | None = None) -> str:
         if self.session:
-            if username:
-                self._prefill_username(username)
-            return "A browser session is already open. Enter your password and OTP in the browser window only."
+            if not self._session_is_alive():
+                self.close()
+            else:
+                self.session.page.bring_to_front()
+                if username:
+                    self._prefill_username(username)
+                return "The secure browser window is active. Enter your password and OTP in that browser window only."
         if not self.config.is_allowed_url(self.config.target_url):
             raise ValueError("Target URL is not allowlisted")
         if not self.config.browser_headless and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
@@ -48,10 +52,14 @@ class SiteAdapter:
             )
         pw = sync_playwright().start()
         try:
-            browser = pw.chromium.launch(headless=self.config.browser_headless)
+            launch_options = {"headless": self.config.browser_headless}
+            if not self.config.browser_headless:
+                launch_options["args"] = [f"--app={self.config.target_url}", "--no-first-run"]
+            browser = pw.chromium.launch(**launch_options)
             page = browser.new_page()
             page.goto(self.config.target_url, wait_until="domcontentloaded")
             self.session = BrowserSession(pw, browser, page)
+            page.bring_to_front()
             if username:
                 self._prefill_username(username)
         except Exception:
@@ -64,9 +72,19 @@ class SiteAdapter:
                 "Do not send credentials or OTPs to Telegram."
             )
         return (
-            "Browser opened. Username was optionally prefilled; enter your password and OTP directly "
-            "in that browser window. Do not send credentials or OTPs to Telegram. When finished, use /status."
+            "Secure browser login window opened and focused. Username was optionally prefilled; enter "
+            "your password and OTP directly in that browser window. Do not send credentials or OTPs to "
+            "Telegram. When finished, use /status."
         )
+
+    def _session_is_alive(self) -> bool:
+        """Check the actual browser connection, not merely the Python session reference."""
+        if not self.session:
+            return False
+        try:
+            return self.session.browser.is_connected() and not self.session.page.is_closed()
+        except Exception:
+            return False
 
     def _prefill_username(self, username: str) -> None:
         """Fill only a visible username-like field; never inspect or fill secrets."""

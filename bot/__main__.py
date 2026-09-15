@@ -65,7 +65,7 @@ class TelegramBot:
                 await self.send(chat_id, f"Site rejected: {exc}\nSend a full http(s) URL, or use /site to try again.")
             return
         if text == "/start":
-            await self.send(chat_id, "Safety-first paper trader. OTPs and passwords must be entered only in the visible browser.\nCommands: /site /login /status /pairs /run /pause /resume /stop")
+            await self.send(chat_id, "Safety-first paper trader. OTPs and passwords must be entered only in the visible browser.\nCommands: /site /login /inspect /status /pairs /run /pause /resume /stop")
         elif text == "/site":
             self.awaiting_site = True
             await self.send(chat_id, "Send the full http(s) URL of the authorized test website. I will allowlist only its exact hostname and open only that URL; I will not access arbitrary backend endpoints.")
@@ -81,6 +81,15 @@ class TelegramBot:
             await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login))
         elif text == "/status":
             await self.send(chat_id, f"mode={'PAPER' if self.config.paper_mode else 'BLOCKED'} site={self.config.target_url} paused={self.paused} browser_open={self.adapter.is_open()} spent_today={self.spent_today}/{self.config.daily_credit_limit} losses_today={self.losses_today}/{self.config.stop_loss_credits}")
+        elif text == "/inspect":
+            try:
+                markets = await asyncio.to_thread(self.adapter.inspect_visible_markets)
+                if not markets:
+                    await self.send(chat_id, "No supported visible market cards found. Expected data-market-card or data-testid=market-card.")
+                else:
+                    await self.send(chat_id, "\n".join(f"{i + 1}. {m.name} | Up={m.up_percent}% Down={m.down_percent}%" for i, m in enumerate(markets)))
+            except Exception as exc:
+                await self.send(chat_id, f"Inspection stopped safely: {exc}")
         elif text == "/pairs":
             await self.send(chat_id, "Configured pairs:\n" + "\n".join(f"- {p}" for p in self.config.pairs))
         elif text == "/pause":
@@ -116,14 +125,34 @@ class TelegramBot:
             order = list(self.config.pairs)
             random.SystemRandom().shuffle(order)
             await self.send(chat_id, "Paper cycle order:\n" + " -> ".join(order))
-            for pair in order:
-                # No odds source is connected by default. This safely abstains.
-                decision = choose_lowest_probability(None)
+            visible = []
+            if self.adapter.is_open():
+                try:
+                    visible = await asyncio.to_thread(self.adapter.inspect_visible_markets)
+                except Exception as exc:
+                    await self.send(chat_id, f"Visible-market inspection failed safely: {exc}")
+            for index, pair in enumerate(order):
+                probabilities = None
+                if index < len(visible) and visible[index].up_percent is not None and visible[index].down_percent is not None:
+                    probabilities = {
+                        Side.UP: visible[index].up_percent / 100,
+                        Side.DOWN: visible[index].down_percent / 100,
+                    }
+                decision = choose_lowest_probability(probabilities)
                 if decision.side is None:
                     await self.send(chat_id, f"{pair}: ABSTAIN — {decision.reason}")
                     continue
                 self.spent_today += self.config.round_credits
-                await self.send(chat_id, f"{pair}: PAPER {decision.side.value}; waiting for settlement")
+                try:
+                    if self.adapter.is_open():
+                        await asyncio.to_thread(self.adapter.paper_click, index, decision.side.value)
+                    else:
+                        raise RuntimeError("no visible browser session")
+                    await self.send(chat_id, f"{pair}: PAPER {decision.side.value}; click recorded, waiting for settlement")
+                except Exception as exc:
+                    self.spent_today -= self.config.round_credits
+                    await self.send(chat_id, f"{pair}: REFUSED — {exc}")
+                    continue
                 await asyncio.sleep(self.config.settlement_seconds)
             await self.send(chat_id, f"Cycle settled. Credits used today: {self.spent_today}/{self.config.daily_credit_limit}")
 

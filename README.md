@@ -18,6 +18,8 @@ Public repository: https://github.com/opeyemiolami486-creator/telegram-paper-tra
 - Waits for a simulated settlement in paper mode and records an audit log.
 - Enforces per-round credits, daily credits, and stop-loss limits.
 
+The reference interaction model is inspired by [Cade Market](https://cade.market/), whose public page shows eight short-round markets with Up/Down percentages and settlement clocks. This repository uses that only as a UI concept reference; it does not automate Cade Market.
+
 ## What it intentionally does not do
 
 - No live credit allocation or live trading.
@@ -53,6 +55,7 @@ python -m bot
 - `/status` — show current mode, pause state, and limits.
 - `/site` — enter the authorized test website URL when the judge provides it.
 - `/login` — open the selected website in a visible browser. Enter username, password, and OTP **in the browser only**.
+- `/inspect` — read up to eight visible market cards from an authorized test page.
 - `/pairs` — show the eight configured paper pairs.
 - `/run` — run one randomized paper cycle.
 - `/pause` and `/resume` — control cycles.
@@ -62,7 +65,7 @@ The bot accepts commands only from `TELEGRAM_ALLOWED_USER_ID`; all other users a
 
 ## Website adaptation
 
-Every site has different selectors and settlement behavior. The bot asks for the site at runtime, but URL adaptability is not the same as trade adaptability: this project deliberately does not guess selectors, discover private endpoints, or attempt to defeat protections. To adapt it, implement a site-specific `SiteAdapter` in `bot/site_adapter.py` using the website's documented/public interface or selectors you are authorized to use. Keep live execution disabled until the site owner explicitly permits automation and the adapter has been tested against a sandbox.
+Every site has different selectors and settlement behavior. The bot asks for the site at runtime, but URL adaptability is not the same as trade adaptability: this project deliberately does not guess selectors, discover private endpoints, or attempt to defeat protections. The reference adapter recognizes visible cards marked `data-market-card` or `data-testid="market-card"`; a paper-only click requires the page to explicitly mark itself with `data-paper-trading="true"` or `data-mode="paper"`. To adapt other markup, implement a site-specific `SiteAdapter` using documented/public selectors authorized by the test owner.
 
 The generic adapter only opens the page and reports that manual login is required. It does not click a real trade button.
 

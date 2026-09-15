@@ -79,6 +79,14 @@ See `.env.example`. Never commit `.env` or secrets. Use a local machine or a pro
 pytest -q
 ```
 
+## Railway deployment
+
+The repository includes `railway.toml` and a `Procfile`. Railway will install Python dependencies, install the Chromium runtime required by Playwright, and start the worker with `python -m bot`.
+
+Set all variables from `.env.example` in Railway’s Variables panel. For a headless Railway worker, set `BROWSER_HEADLESS=true`. The Telegram polling loop can run on Railway, but Railway does not provide an interactive desktop, so manual username/password/OTP entry and visible-browser inspection must be performed on a local machine or an authorized remote desktop. Do not deploy credentials in source control.
+
+The build was validated locally in a clean Python virtual environment: dependencies installed, all tests passed, and all Python modules compiled successfully. A live Railway deployment cannot be verified from this session because no Railway project or authenticated Railway CLI is connected.
+
 ## Judge testing
 
 Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. A judge can send `/site`, provide the authorized test URL, then use `/login` and complete login/OTP directly in the visible browser. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.

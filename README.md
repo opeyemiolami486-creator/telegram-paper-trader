@@ -15,7 +15,7 @@ Public repository: https://github.com/opeyemiolami486-creator/telegram-paper-tra
 - Randomizes the order of eight configured pairs.
 - Supports `UP` and `DOWN` paper decisions.
 - Uses a conservative **abstain-by-default** strategy: it only selects the side with the lower supplied probability when both probabilities are present and within bounds; it never guesses probabilities from page appearance.
-- Waits for a simulated settlement in paper mode and records an audit log.
+- Waits for a newly randomized simulated settlement delay on every action, configurable from 0 to 60 seconds.
 - Enforces per-round credits, daily credits, and stop-loss limits.
 
 The reference interaction model is inspired by [Cade Market](https://cade.market/), whose public page shows eight short-round markets with Up/Down percentages and settlement clocks. This repository uses that only as a UI concept reference; it does not automate Cade Market.
@@ -72,6 +72,8 @@ The generic adapter only opens the page and reports that manual login is require
 ## Environment variables
 
 See `.env.example`. Never commit `.env` or secrets. Use a local machine or a properly secured private host for a long-running bot; the default Manus sandbox is not a reliable always-on service.
+
+Set `SETTLEMENT_MIN_SECONDS=0` and `SETTLEMENT_MAX_SECONDS=60` to randomize each paper settlement wait across the full requested range. Both endpoints are inclusive.
 
 ## Testing
 

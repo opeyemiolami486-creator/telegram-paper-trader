@@ -153,7 +153,12 @@ class TelegramBot:
                     self.spent_today -= self.config.round_credits
                     await self.send(chat_id, f"{pair}: REFUSED — {exc}")
                     continue
-                await asyncio.sleep(self.config.settlement_seconds)
+                settlement_seconds = random.SystemRandom().randint(
+                    self.config.settlement_min_seconds,
+                    self.config.settlement_max_seconds,
+                )
+                await self.send(chat_id, f"{pair}: simulated settlement delay selected: {settlement_seconds}s")
+                await asyncio.sleep(settlement_seconds)
             await self.send(chat_id, f"Cycle settled. Credits used today: {self.spent_today}/{self.config.daily_credit_limit}")
 
     async def run(self) -> None:

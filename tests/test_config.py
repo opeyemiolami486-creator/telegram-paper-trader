@@ -14,7 +14,8 @@ def config():
         round_credits=1,
         daily_credit_limit=10,
         stop_loss_credits=3,
-        settlement_seconds=0,
+        settlement_min_seconds=0,
+        settlement_max_seconds=60,
         browser_headless=False,
     )
 

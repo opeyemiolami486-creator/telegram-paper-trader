@@ -18,7 +18,8 @@ class Config:
     round_credits: int
     daily_credit_limit: int
     stop_loss_credits: int
-    settlement_seconds: int
+    settlement_min_seconds: int
+    settlement_max_seconds: int
     browser_headless: bool
 
     @classmethod
@@ -38,6 +39,10 @@ class Config:
             raise ValueError("TARGET_URL must be an http(s) URL")
         if parsed.hostname.lower() not in hosts:
             raise ValueError("TARGET_URL hostname must be present in ALLOWED_HOSTS")
+        settlement_min = max(0, int(os.environ.get("SETTLEMENT_MIN_SECONDS", "0")))
+        settlement_max = min(60, int(os.environ.get("SETTLEMENT_MAX_SECONDS", "60")))
+        if settlement_min > settlement_max:
+            raise ValueError("SETTLEMENT_MIN_SECONDS cannot exceed SETTLEMENT_MAX_SECONDS")
         return cls(
             telegram_token=token,
             allowed_user_id=int(user_id),
@@ -48,7 +53,8 @@ class Config:
             round_credits=max(1, int(os.environ.get("ROUND_CREDITS", "1"))),
             daily_credit_limit=max(1, int(os.environ.get("DAILY_CREDIT_LIMIT", "10"))),
             stop_loss_credits=max(0, int(os.environ.get("STOP_LOSS_CREDITS", "3"))),
-            settlement_seconds=max(0, int(os.environ.get("SETTLEMENT_SECONDS", "10"))),
+            settlement_min_seconds=settlement_min,
+            settlement_max_seconds=settlement_max,
             browser_headless=os.environ.get("BROWSER_HEADLESS", "false").lower() == "true",
         )
 

@@ -4,8 +4,8 @@ import asyncio
 import json
 import logging
 import random
-import time
 from datetime import date
+from urllib.parse import urlparse
 
 import httpx
 
@@ -29,6 +29,7 @@ class TelegramBot:
         self.today = date.today()
         self.offset = 0
         self.lock = asyncio.Lock()
+        self.awaiting_site = False
 
     def reset_day(self) -> None:
         if date.today() != self.today:
@@ -49,16 +50,37 @@ class TelegramBot:
             return
         message = update.get("message", {})
         chat_id = message.get("chat", {}).get("id")
-        text = (message.get("text") or "").strip().lower()
+        raw_text = (message.get("text") or "").strip()
+        text = raw_text.lower()
         if not chat_id:
             return
         self.reset_day()
+        if self.awaiting_site and not text.startswith("/"):
+            self.awaiting_site = False
+            try:
+                self.config = self.config.with_target_url(raw_text)
+                self.adapter.config = self.config
+                await self.send(chat_id, f"Test site saved: {self.config.target_url}\nHost allowlist updated for this exact host. Use /login to open it in a visible browser. Live trading remains disabled.")
+            except ValueError as exc:
+                await self.send(chat_id, f"Site rejected: {exc}\nSend a full http(s) URL, or use /site to try again.")
+            return
         if text == "/start":
-            await self.send(chat_id, "Safety-first paper trader. OTPs and passwords must be entered only in the visible browser.\nCommands: /login /status /pairs /run /pause /resume /stop")
+            await self.send(chat_id, "Safety-first paper trader. OTPs and passwords must be entered only in the visible browser.\nCommands: /site /login /status /pairs /run /pause /resume /stop")
+        elif text == "/site":
+            self.awaiting_site = True
+            await self.send(chat_id, "Send the full http(s) URL of the authorized test website. I will allowlist only its exact hostname and open only that URL; I will not access arbitrary backend endpoints.")
+        elif text.startswith("/site "):
+            self.awaiting_site = False
+            try:
+                self.config = self.config.with_target_url(raw_text[6:].strip())
+                self.adapter.config = self.config
+                await self.send(chat_id, f"Test site saved: {self.config.target_url}\nUse /login to open it in a visible browser. Live trading remains disabled.")
+            except ValueError as exc:
+                await self.send(chat_id, f"Site rejected: {exc}")
         elif text == "/login":
             await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login))
         elif text == "/status":
-            await self.send(chat_id, f"mode={'PAPER' if self.config.paper_mode else 'BLOCKED'} paused={self.paused} browser_open={self.adapter.is_open()} spent_today={self.spent_today}/{self.config.daily_credit_limit} losses_today={self.losses_today}/{self.config.stop_loss_credits}")
+            await self.send(chat_id, f"mode={'PAPER' if self.config.paper_mode else 'BLOCKED'} site={self.config.target_url} paused={self.paused} browser_open={self.adapter.is_open()} spent_today={self.spent_today}/{self.config.daily_credit_limit} losses_today={self.losses_today}/{self.config.stop_loss_credits}")
         elif text == "/pairs":
             await self.send(chat_id, "Configured pairs:\n" + "\n".join(f"- {p}" for p in self.config.pairs))
         elif text == "/pause":

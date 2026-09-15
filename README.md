@@ -8,7 +8,7 @@ Public repository: https://github.com/opeyemiolami486-creator/telegram-paper-tra
 
 ## What it does
 
-- Accepts a website URL through configuration.
+- Asks for an authorized test website URL through Telegram with `/site`, validates it, and allowlists only its exact hostname.
 - Restricts navigation to an explicit host allowlist.
 - Uses a visible Playwright browser so the operator can complete login and OTP manually.
 - Provides Telegram commands for status, pause/resume, and a paper-trading cycle.
@@ -23,6 +23,7 @@ Public repository: https://github.com/opeyemiolami486-creator/telegram-paper-tra
 - No live credit allocation or live trading.
 - No Telegram collection or storage of passwords, OTPs, recovery codes, or API secrets.
 - No arbitrary backend/API access.
+- No automatic discovery of hidden endpoints or unrelated domains.
 - No CAPTCHA solving, anti-bot bypass, stealth mode, or hidden browser.
 - No claim that a lower probability means a better trade. The “lowest probability” rule is included only as a configurable hackathon strategy and defaults to abstention unless a trusted probability feed is provided.
 
@@ -50,7 +51,8 @@ python -m bot
 
 - `/start` — show the safety notice and available commands.
 - `/status` — show current mode, pause state, and limits.
-- `/login` — open the configured website in a visible browser. Enter username, password, and OTP **in the browser only**.
+- `/site` — enter the authorized test website URL when the judge provides it.
+- `/login` — open the selected website in a visible browser. Enter username, password, and OTP **in the browser only**.
 - `/pairs` — show the eight configured paper pairs.
 - `/run` — run one randomized paper cycle.
 - `/pause` and `/resume` — control cycles.
@@ -60,7 +62,7 @@ The bot accepts commands only from `TELEGRAM_ALLOWED_USER_ID`; all other users a
 
 ## Website adaptation
 
-Every site has different selectors and settlement behavior. This project deliberately does not guess selectors or attempt to defeat protections. To adapt it, implement a site-specific `SiteAdapter` in `bot/site_adapter.py` using the website's documented/public interface or selectors you are authorized to use. Keep live execution disabled until the site owner explicitly permits automation and the adapter has been tested against a sandbox.
+Every site has different selectors and settlement behavior. The bot asks for the site at runtime, but URL adaptability is not the same as trade adaptability: this project deliberately does not guess selectors, discover private endpoints, or attempt to defeat protections. To adapt it, implement a site-specific `SiteAdapter` in `bot/site_adapter.py` using the website's documented/public interface or selectors you are authorized to use. Keep live execution disabled until the site owner explicitly permits automation and the adapter has been tested against a sandbox.
 
 The generic adapter only opens the page and reports that manual login is required. It does not click a real trade button.
 
@@ -74,17 +76,9 @@ See `.env.example`. Never commit `.env` or secrets. Use a local machine or a pro
 pytest -q
 ```
 
-## Judge demo
+## Judge testing
 
-Judges can run a deterministic local demonstration without Telegram credentials or a real website:
-
-```bash
-python demo.py
-```
-
-The demo creates eight local mock pairs, randomizes their order, selects the lower **supplied** probability, waits for simulated settlement, and prints an audit trail. It never opens a real browser and never allocates credits. This is the supported way to test the project when no authorized sandbox or documented API has been provided.
-
-Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. The generic adapter intentionally refuses to click live trade controls.
+Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. A judge can send `/site`, provide the authorized test URL, then use `/login` and complete login/OTP directly in the visible browser. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.
 
 ## License
 

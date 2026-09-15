@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -55,3 +55,14 @@ class Config:
     def is_allowed_url(self, url: str) -> bool:
         host = (urlparse(url).hostname or "").lower()
         return host in self.allowed_hosts
+
+    def with_target_url(self, target_url: str) -> "Config":
+        parsed = urlparse(target_url.strip())
+        if parsed.scheme not in {"https", "http"} or not parsed.hostname:
+            raise ValueError("URL must use http:// or https:// and include a hostname")
+        if parsed.username or parsed.password:
+            raise ValueError("URLs containing embedded credentials are not accepted")
+        if parsed.fragment:
+            raise ValueError("URL fragments are not accepted")
+        host = parsed.hostname.lower()
+        return replace(self, target_url=target_url.strip(), allowed_hosts=frozenset({host}))

@@ -76,6 +76,8 @@ See `.env.example`. Never commit `.env` or secrets. Use a local machine or a pro
 
 Set `SETTLEMENT_MIN_SECONDS=0` and `SETTLEMENT_MAX_SECONDS=60` to randomize each paper settlement wait across the full requested range. Both endpoints are inclusive.
 
+`STOP_LOSS_CREDITS` is the maximum number of recorded losses before the bot pauses. To disable that particular limit, set `STOP_LOSS_CREDITS=unlimited`. The daily credit limit remains active unless separately changed.
+
 ## Testing
 
 ```bash

@@ -18,7 +18,7 @@ class Config:
     paper_mode: bool
     round_credits: int
     daily_credit_limit: int
-    stop_loss_credits: int
+    stop_loss_credits: int | None
     settlement_min_seconds: int
     settlement_max_seconds: int
     browser_headless: bool
@@ -41,6 +41,13 @@ class Config:
             raise ValueError("TARGET_URL must be an http(s) URL")
         if parsed.hostname.lower() not in hosts:
             raise ValueError("TARGET_URL hostname must be present in ALLOWED_HOSTS")
+        stop_loss_raw = os.environ.get("STOP_LOSS_CREDITS", "3").strip().lower()
+        if stop_loss_raw in {"", "none", "unlimited", "off"}:
+            stop_loss = None
+        else:
+            stop_loss = int(stop_loss_raw)
+            if stop_loss < 0:
+                raise ValueError("STOP_LOSS_CREDITS must be non-negative or unlimited")
         settlement_min = max(0, int(os.environ.get("SETTLEMENT_MIN_SECONDS", "0")))
         settlement_max = min(60, int(os.environ.get("SETTLEMENT_MAX_SECONDS", "60")))
         if settlement_min > settlement_max:
@@ -55,7 +62,7 @@ class Config:
             paper_mode=os.environ.get("PAPER_MODE", "true").lower() == "true",
             round_credits=max(1, int(os.environ.get("ROUND_CREDITS", "1"))),
             daily_credit_limit=max(1, int(os.environ.get("DAILY_CREDIT_LIMIT", "10"))),
-            stop_loss_credits=max(0, int(os.environ.get("STOP_LOSS_CREDITS", "3"))),
+            stop_loss_credits=stop_loss,
             settlement_min_seconds=settlement_min,
             settlement_max_seconds=settlement_max,
             browser_headless=os.environ.get("BROWSER_HEADLESS", "false").lower() == "true",

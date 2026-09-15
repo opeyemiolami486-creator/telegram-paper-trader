@@ -81,7 +81,8 @@ class TelegramBot:
         elif text == "/login":
             await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login))
         elif text == "/status":
-            await self.send(chat_id, f"mode={'PAPER' if self.config.paper_mode else 'BLOCKED'} site={self.config.target_url} paused={self.paused} browser_open={self.adapter.is_open()} spent_today={self.spent_today}/{self.config.daily_credit_limit} losses_today={self.losses_today}/{self.config.stop_loss_credits}")
+            loss_limit = self.config.stop_loss_credits if self.config.stop_loss_credits is not None else "unlimited"
+            await self.send(chat_id, f"mode={'PAPER' if self.config.paper_mode else 'BLOCKED'} site={self.config.target_url} paused={self.paused} browser_open={self.adapter.is_open()} spent_today={self.spent_today}/{self.config.daily_credit_limit} losses_today={self.losses_today}/{loss_limit}")
         elif text == "/inspect":
             try:
                 markets = await asyncio.to_thread(self.adapter.inspect_visible_markets)
@@ -120,7 +121,7 @@ class TelegramBot:
             if self.spent_today + self.config.round_credits > self.config.daily_credit_limit:
                 await self.send(chat_id, "Daily credit limit reached; refusing to continue.")
                 return
-            if self.losses_today >= self.config.stop_loss_credits:
+            if self.config.stop_loss_credits is not None and self.losses_today >= self.config.stop_loss_credits:
                 await self.send(chat_id, "Stop-loss limit reached; refusing to continue.")
                 return
             order = list(self.config.pairs)

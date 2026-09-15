@@ -6,7 +6,8 @@ from bot.config import Config
 def config():
     return Config(
         telegram_token="token",
-        allowed_user_id=1,
+        allowed_user_ids=frozenset({1}),
+        public_access=False,
         target_url="https://example.com",
         allowed_hosts=frozenset({"example.com"}),
         pairs=tuple(f"P{i}" for i in range(8)),

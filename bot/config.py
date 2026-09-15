@@ -10,7 +10,8 @@ from dotenv import load_dotenv
 @dataclass(frozen=True)
 class Config:
     telegram_token: str
-    allowed_user_id: int
+    allowed_user_ids: frozenset[int]
+    public_access: bool
     target_url: str
     allowed_hosts: frozenset[str]
     pairs: tuple[str, ...]
@@ -26,12 +27,13 @@ class Config:
     def from_env(cls) -> "Config":
         load_dotenv()
         token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-        user_id = os.environ.get("TELEGRAM_ALLOWED_USER_ID", "").strip()
+        user_ids = frozenset(int(x.strip()) for x in os.environ.get("TELEGRAM_ALLOWED_USER_IDS", os.environ.get("TELEGRAM_ALLOWED_USER_ID", "")).split(",") if x.strip())
         target = os.environ.get("TARGET_URL", "").strip()
         hosts = frozenset(x.strip().lower() for x in os.environ.get("ALLOWED_HOSTS", "").split(",") if x.strip())
         pairs = tuple(x.strip() for x in os.environ.get("PAIR_NAMES", "").split(",") if x.strip())
-        if not token or not user_id or not target or not hosts:
-            raise ValueError("TELEGRAM_BOT_TOKEN, TELEGRAM_ALLOWED_USER_ID, TARGET_URL, and ALLOWED_HOSTS are required")
+        public_access = os.environ.get("TELEGRAM_PUBLIC_ACCESS", "false").lower() == "true"
+        if not token or (not user_ids and not public_access) or not target or not hosts:
+            raise ValueError("TELEGRAM_BOT_TOKEN, a Telegram user ID (unless public access is enabled), TARGET_URL, and ALLOWED_HOSTS are required")
         if len(pairs) != 8:
             raise ValueError("PAIR_NAMES must contain exactly 8 comma-separated names")
         parsed = urlparse(target)
@@ -45,7 +47,8 @@ class Config:
             raise ValueError("SETTLEMENT_MIN_SECONDS cannot exceed SETTLEMENT_MAX_SECONDS")
         return cls(
             telegram_token=token,
-            allowed_user_id=int(user_id),
+            allowed_user_ids=user_ids,
+            public_access=public_access,
             target_url=target,
             allowed_hosts=hosts,
             pairs=pairs,
@@ -57,6 +60,11 @@ class Config:
             settlement_max_seconds=settlement_max,
             browser_headless=os.environ.get("BROWSER_HEADLESS", "false").lower() == "true",
         )
+
+    @property
+    def allowed_user_id(self) -> int | None:
+        """Backward-compatible primary recipient for private mode."""
+        return next(iter(self.allowed_user_ids), None)
 
     def is_allowed_url(self, url: str) -> bool:
         host = (urlparse(url).hostname or "").lower()

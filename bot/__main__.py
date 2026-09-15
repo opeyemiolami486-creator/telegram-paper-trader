@@ -42,7 +42,7 @@ class TelegramBot:
 
     def authorized(self, update: dict) -> bool:
         sender = update.get("message", {}).get("from", {}).get("id")
-        return sender == self.config.allowed_user_id
+        return self.config.public_access or sender in self.config.allowed_user_ids
 
     async def handle(self, update: dict) -> None:
         if not self.authorized(update):
@@ -65,7 +65,8 @@ class TelegramBot:
                 await self.send(chat_id, f"Site rejected: {exc}\nSend a full http(s) URL, or use /site to try again.")
             return
         if text == "/start":
-            await self.send(chat_id, "Safety-first paper trader. OTPs and passwords must be entered only in the visible browser.\nCommands: /site /login /inspect /status /pairs /run /pause /resume /stop")
+            access = "public judge mode" if self.config.public_access else "private allowlist mode"
+            await self.send(chat_id, f"Safety-first paper trader ({access}). OTPs and passwords must be entered only in the visible browser.\nCommands: /site /login /inspect /status /pairs /run /pause /resume /stop")
         elif text == "/site":
             self.awaiting_site = True
             await self.send(chat_id, "Send the full http(s) URL of the authorized test website. I will allowlist only its exact hostname and open only that URL; I will not access arbitrary backend endpoints.")
@@ -162,7 +163,8 @@ class TelegramBot:
             await self.send(chat_id, f"Cycle settled. Credits used today: {self.spent_today}/{self.config.daily_credit_limit}")
 
     async def run(self) -> None:
-        await self.send(self.config.allowed_user_id, "Bot online in PAPER mode. Use /start.")
+        if self.config.allowed_user_id is not None:
+            await self.send(self.config.allowed_user_id, "Bot online in PAPER mode. Use /start.")
         try:
             while True:
                 response = await self.client.get(f"{self.base}/getUpdates", params={"timeout": 25, "offset": self.offset})

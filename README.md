@@ -28,11 +28,12 @@ The reference interaction model is inspired by [Cade Market](https://cade.market
 - No automatic discovery of hidden endpoints or unrelated domains.
 - No CAPTCHA solving, anti-bot bypass, stealth mode, or hidden browser.
 - No claim that a lower probability means a better trade. The “lowest probability” rule is included only as a configurable hackathon strategy and defaults to abstention unless a trusted probability feed is provided.
+- Public judge access is opt-in and should only be used with `PAPER_MODE=true`; it does not provide a security boundary for real trading.
 
 ## Setup
 
 1. Create a Telegram bot with BotFather and keep the token private.
-2. Copy `.env.example` to `.env` and set `TELEGRAM_BOT_TOKEN` and your Telegram user ID.
+2. Copy `.env.example` to `.env` and choose either private access with `TELEGRAM_ALLOWED_USER_IDS`, or public judge access with `TELEGRAM_PUBLIC_ACCESS=true`.
 3. Add only the website hostnames you are authorized to automate to `ALLOWED_HOSTS`.
 4. Install dependencies:
 
@@ -61,7 +62,7 @@ python -m bot
 - `/pause` and `/resume` — control cycles.
 - `/stop` — emergency stop and close the browser.
 
-The bot accepts commands only from `TELEGRAM_ALLOWED_USER_ID`; all other users are rejected.
+In private mode, the bot accepts commands only from the numeric IDs in `TELEGRAM_ALLOWED_USER_IDS`. In public judge mode, any Telegram user can use the bot, but every action remains paper-only and the bot still refuses credentials in Telegram, hidden APIs, and live-trade controls. For a hackathon demo, use a separate bot and set `PAPER_MODE=true`.
 
 ## Website adaptation
 

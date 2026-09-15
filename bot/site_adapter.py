@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Callable
 
@@ -31,27 +32,57 @@ class SiteAdapter:
         self.notify = notify or (lambda _: None)
         self.session: BrowserSession | None = None
 
-    def open_for_manual_login(self) -> str:
+    def open_for_manual_login(self, username: str | None = None) -> str:
         if self.session:
-            return "A browser session is already open. Enter credentials and OTP in the browser window."
+            if username:
+                self._prefill_username(username)
+            return "A browser session is already open. Enter your password and OTP in the browser window only."
         if not self.config.is_allowed_url(self.config.target_url):
             raise ValueError("Target URL is not allowlisted")
+        if not self.config.browser_headless and not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            return (
+                "No visible desktop is available in this bot process, so no browser popup can appear. "
+                "Run the bot on the tester's machine with BROWSER_HEADLESS=false, or open the test URL "
+                f"directly in the tester's already-open browser: {self.config.target_url}\n"
+                "Do not send a password, OTP, recovery code, or API secret to Telegram."
+            )
         pw = sync_playwright().start()
-        browser = pw.chromium.launch(headless=self.config.browser_headless)
-        page = browser.new_page()
-        page.goto(self.config.target_url, wait_until="domcontentloaded")
-        self.session = BrowserSession(pw, browser, page)
+        try:
+            browser = pw.chromium.launch(headless=self.config.browser_headless)
+            page = browser.new_page()
+            page.goto(self.config.target_url, wait_until="domcontentloaded")
+            self.session = BrowserSession(pw, browser, page)
+            if username:
+                self._prefill_username(username)
+        except Exception:
+            pw.stop()
+            raise
         if self.config.browser_headless:
             return (
-                "A headless browser session started, but it is not visible on Railway. "
-                "For manual username/password/OTP entry, run the bot locally with "
-                "BROWSER_HEADLESS=false or use an authorized judge test account without OTP. "
+                "A headless browser session started, but it has no visible window. "
+                "For manual username/password/OTP entry, run the bot locally with BROWSER_HEADLESS=false. "
                 "Do not send credentials or OTPs to Telegram."
             )
         return (
-            "Browser opened. Enter username, password, and OTP directly in that browser window. "
-            "Do not send credentials or OTPs to Telegram. When finished, use /status."
+            "Browser opened. Username was optionally prefilled; enter your password and OTP directly "
+            "in that browser window. Do not send credentials or OTPs to Telegram. When finished, use /status."
         )
+
+    def _prefill_username(self, username: str) -> None:
+        """Fill only a visible username-like field; never inspect or fill secrets."""
+        if not self.session or not username:
+            return
+        selectors = (
+            "input[autocomplete='username']",
+            "input[type='email']",
+            "input[name*='user' i]",
+            "input[name*='email' i]",
+        )
+        for selector in selectors:
+            field = self.session.page.locator(selector).first
+            if field.count() and field.is_visible():
+                field.fill(username)
+                return
 
     def close(self) -> None:
         if self.session:
@@ -63,7 +94,7 @@ class SiteAdapter:
         return self.session is not None
 
     def inspect_visible_markets(self) -> list[VisibleMarket]:
-        """Read visible Cade-style cards; never calls a private API."""
+        """Read visible market cards; never calls a private API."""
         if not self.session:
             raise RuntimeError("Open the site with /login first")
         cards = self.session.page.locator("[data-market-card], [data-testid='market-card']")

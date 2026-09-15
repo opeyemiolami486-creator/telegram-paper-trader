@@ -55,7 +55,7 @@ python -m bot
 - `/start` — show the safety notice and available commands.
 - `/status` — show current mode, pause state, and limits.
 - `/site` — enter the authorized test website URL when the judge provides it.
-- `/login` — open the selected website in a visible browser. Enter username, password, and OTP **in the browser only**.
+- `/login` — ask for an optional username, then open the selected website. The username is held in memory only for that attempt; enter the password and OTP **in the browser only**. `/cancel` opens without a username.
 - `/inspect` — read up to eight visible market cards from an authorized test page.
 - `/pairs` — show the eight configured paper pairs.
 - `/run` — run one randomized paper cycle.
@@ -94,7 +94,7 @@ The build was validated locally in a clean Python virtual environment: dependenc
 
 ## Judge testing
 
-Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. For interactive testing, run the bot locally with `BROWSER_HEADLESS=false`, send `/site`, then use `/login` and complete login/OTP directly in the visible browser. Alternatively, ask the judges for a sandbox account that does not require OTP. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.
+Testing against a real website requires the website owner’s permission, a test account or sandbox, and site-specific selectors or an official API. For interactive testing, run the bot on the tester’s machine with `BROWSER_HEADLESS=false`, send `/site`, then use `/login`. The bot asks for an optional username but never accepts passwords, OTPs, recovery codes, or API secrets in Telegram. If the bot process has no desktop (`DISPLAY`/`WAYLAND_DISPLAY`), it now says so instead of falsely claiming that a popup opened; open the exact allowlisted URL in the tester’s already-open browser or run the bot locally. The generic adapter intentionally refuses to click live trade controls; it demonstrates secure site selection and paper-trading orchestration instead.
 
 ## License
 

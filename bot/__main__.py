@@ -30,6 +30,8 @@ class TelegramBot:
         self.offset = 0
         self.lock = asyncio.Lock()
         self.awaiting_site = False
+        self.awaiting_username: set[int] = set()
+        self.pending_usernames: dict[int, str] = {}
 
     def reset_day(self) -> None:
         if date.today() != self.today:
@@ -64,9 +66,19 @@ class TelegramBot:
             except ValueError as exc:
                 await self.send(chat_id, f"Site rejected: {exc}\nSend a full http(s) URL, or use /site to try again.")
             return
+        if chat_id in self.awaiting_username and not text.startswith("/"):
+            self.awaiting_username.discard(chat_id)
+            if _looks_like_secret(raw_text):
+                await self.send(chat_id, "For your protection, do not send passwords, OTPs, recovery codes, or API secrets to Telegram. Use /login and enter them only in the browser.")
+                return
+            self.pending_usernames[chat_id] = raw_text[:200]
+            await self.send(chat_id, "Username saved in memory for this login attempt only. Opening the authorized site now; enter your password and OTP in the browser only.")
+            await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login, raw_text[:200]))
+            self.pending_usernames.pop(chat_id, None)
+            return
         if text == "/start":
             access = "public judge mode" if self.config.public_access else "private allowlist mode"
-            await self.send(chat_id, f"Safety-first paper trader ({access}). OTPs and passwords must be entered only in the visible browser.\nCommands: /site /login /inspect /status /pairs /run /pause /resume /stop")
+            await self.send(chat_id, f"Safety-first paper trader ({access}). /login asks for an optional username, then opens the authorized site. Passwords and OTPs must be entered only in the browser.\nCommands: /site /login /cancel /inspect /status /pairs /run /pause /resume /stop")
         elif text == "/site":
             self.awaiting_site = True
             await self.send(chat_id, "Send the full http(s) URL of the authorized test website. I will allowlist only its exact hostname and open only that URL; I will not access arbitrary backend endpoints.")
@@ -79,6 +91,17 @@ class TelegramBot:
             except ValueError as exc:
                 await self.send(chat_id, f"Site rejected: {exc}")
         elif text == "/login":
+            self.awaiting_username.add(chat_id)
+            await self.send(chat_id, "Optional: send your username only to prefill the browser. Never send a password, OTP, recovery code, or API secret here. Or use /cancel to open without a username.")
+        elif text.startswith("/login "):
+            username = raw_text[7:].strip()
+            if _looks_like_secret(username):
+                await self.send(chat_id, "Login details rejected. Do not send passwords, OTPs, recovery codes, or API secrets to Telegram.")
+            else:
+                await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login, username[:200]))
+        elif text == "/cancel":
+            self.awaiting_username.discard(chat_id)
+            self.pending_usernames.pop(chat_id, None)
             await self.send(chat_id, await asyncio.to_thread(self.adapter.open_for_manual_login))
         elif text == "/status":
             loss_limit = self.config.stop_loss_credits if self.config.stop_loss_credits is not None else "unlimited"
@@ -176,6 +199,19 @@ class TelegramBot:
         finally:
             await self.client.aclose()
             await asyncio.to_thread(self.adapter.close)
+
+
+def _looks_like_secret(value: str) -> bool:
+    """Conservative guard against accidentally accepting common secret-shaped input."""
+    compact = value.replace(" ", "")
+    lowered = value.lower()
+    return (
+        len(value) > 200
+        or "otp" in lowered
+        or "password" in lowered
+        or "recovery" in lowered
+        or (compact.isdigit() and len(compact) in {4, 5, 6, 7, 8})
+    )
 
 
 def main() -> None:
